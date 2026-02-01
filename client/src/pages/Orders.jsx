@@ -1,5 +1,5 @@
-// import { useEffect, useState } from "react";
 import React, { useEffect, useState } from "react";
+import api from "../utils/api";
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
@@ -7,17 +7,19 @@ export default function Orders() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/orders")
-      .then((res) => res.json())
-      .then((data) => {
-        setOrders(data.orders || data); 
-        setLoading(false);
-      })
-      .catch((err) => {
+    const fetchOrders = async () => {
+      try {
+        const res = await api.get("/orders");
+        setOrders(res.data.orders || res.data);
+      } catch (err) {
         console.error(err);
         setError("Failed to load orders");
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchOrders();
   }, []);
 
   if (loading) return <p>Loading orders...</p>;
@@ -45,7 +47,8 @@ export default function Orders() {
           <strong>Items:</strong>
           {order.items.map((item, index) => (
             <p key={index}>
-              {item.menuItem.name} × {item.quantity} — ₹{item.menuItem.price}
+              {item.menuItem?.name || "Item"} × {item.quantity} — ₹
+              {item.menuItem?.price || 0}
             </p>
           ))}
 
