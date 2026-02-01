@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { API_URL } from "../utils/api";
+import api from "../utils/api";
 
 export default function Analytics() {
   const [summary, setSummary] = useState(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/analytics/summary`)
-      .then(res => res.json())
-      .then(setSummary)
+    api
+      .get("/analytics/summary")
+      .then((res) => setSummary(res.data))
       .catch(() => alert("Analytics error"));
   }, []);
 
