@@ -5,14 +5,16 @@ exports.getOrders = async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
     const filter = {};
+
     if (status && status !== 'All') {
       filter.status = status;
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const total = await Order.countDocuments(filter);
+
     const orders = await Order.find(filter)
-      
+      .populate('items.menuItem', 'name category price') 
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -33,10 +35,9 @@ exports.getOrders = async (req, res) => {
 
 exports.getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id).populate(
-      'items.menuItem',
-      'name category price'
-    );
+    const order = await Order.findById(req.params.id)
+      .populate('items.menuItem', 'name category price');
+
     if (!order) return res.status(404).json({ message: 'Order not found.' });
     res.json(order);
   } catch (err) {
@@ -49,6 +50,7 @@ exports.createOrder = async (req, res) => {
     const { customerName, items, tableNumber } = req.body;
     let totalAmount = 0;
     const enrichedItems = [];
+
     for (const item of items) {
       const menuItem = await MenuItem.findById(item.menuItem);
       if (!menuItem) {
@@ -57,11 +59,13 @@ exports.createOrder = async (req, res) => {
       if (!menuItem.isAvailable) {
         return res.status(400).json({ message: `"${menuItem.name}" is currently unavailable.` });
       }
+
       enrichedItems.push({
         menuItem: menuItem._id,
         quantity: item.quantity,
         priceAtOrder: menuItem.price
       });
+
       totalAmount += menuItem.price * item.quantity;
     }
 
@@ -73,14 +77,14 @@ exports.createOrder = async (req, res) => {
     });
 
     await order.save();
-    const populated = await Order.findById(order._id).populate(
-      'items.menuItem',
-      'name category price'
-    );
+
+    const populated = await Order.findById(order._id)
+      .populate('items.menuItem', 'name category price');
+
     res.status(201).json(populated);
   } catch (err) {
     if (err.name === 'ValidationError') {
-      const messages = Object.values(err.errors).map((e) => e.message);
+      const messages = Object.values(err.errors).map(e => e.message);
       return res.status(400).json({ message: messages.join(', ') });
     }
     res.status(500).json({ message: err.message });
@@ -90,6 +94,7 @@ exports.createOrder = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
+
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       { status },
@@ -99,9 +104,6 @@ exports.updateOrderStatus = async (req, res) => {
     if (!order) return res.status(404).json({ message: 'Order not found.' });
     res.json(order);
   } catch (err) {
-    if (err.name === 'ValidationError') {
-      return res.status(400).json({ message: err.errors.status?.message || err.message });
-    }
     res.status(500).json({ message: err.message });
   }
 };
@@ -115,7 +117,9 @@ exports.getTopSellers = async (req, res) => {
         $group: {
           _id: '$items.menuItem',
           totalQuantity: { $sum: '$items.quantity' },
-          totalRevenue: { $sum: { $multiply: ['$items.priceAtOrder', '$items.quantity'] } }
+          totalRevenue: {
+            $sum: { $multiply: ['$items.priceAtOrder', '$items.quantity'] }
+          }
         }
       },
       {
@@ -157,6 +161,7 @@ exports.getAnalyticsSummary = async (req, res) => {
       { $match: { status: { $ne: 'Cancelled' } } },
       { $group: { _id: null, totalRevenue: { $sum: '$totalAmount' } } }
     ]);
+
     const totalRevenue = revenueResult[0]?.totalRevenue || 0;
 
     const statusBreakdown = await Order.aggregate([
@@ -174,7 +179,3 @@ exports.getAnalyticsSummary = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-
-
-// .populate('items.menuItem', 'name category price')
