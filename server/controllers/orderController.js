@@ -12,7 +12,7 @@ exports.getOrders = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const total = await Order.countDocuments(filter);
     const orders = await Order.find(filter)
-      .populate('items.menuItem', 'name category price')
+      
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -174,3 +174,7 @@ exports.getAnalyticsSummary = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+
+// .populate('items.menuItem', 'name category price')
